@@ -1,58 +1,168 @@
-from flask import Flask, jsonify
+import requests
 import yt_dlp
 import requests
-from bs4 import BeautifulSoup
 import re
 import json
-import urllib.parse
+from flask import Flask, jsonify
+
+
+RapidAPI_Key = "71170096d0mshaeba07d8177372ep1813bbjsnde293edbcc48"
+RapidAPI_Host = "all-media-downloader1.p.rapidapi.com"
+
 
 app = Flask(__name__)
 
-# Common utility functions
-
-def clean_str(s):
-    return json.loads('{"text": "' + s + '"}')['text']
-
-# Instagram download
-
-def fetch_instagram_video_info(url):
-
-    api_url = "https://instagram-post-reels-stories-downloader.p.rapidapi.com/instagram/"
-    querystring = {"url": url}
-
-    headers = {
-	    "X-RapidAPI-Key": "71170096d0mshaeba07d8177372ep1813bbjsnde293edbcc48",
-	    "X-RapidAPI-Host": "instagram-post-reels-stories-downloader.p.rapidapi.com"
-    }
-
+def get_instagram_video(url):
     try:
-        response = requests.get(api_url, headers=headers, params=querystring)
-        response.raise_for_status()
-        
-        data = response.json()
+        api_url = "https://all-media-downloader1.p.rapidapi.com/Instagram"
+        payload = {"url": url}
+        headers = {
+            "content-type": "application/json",
+            "X-RapidAPI-Key": RapidAPI_Key,
+            "X-RapidAPI-Host": RapidAPI_Host
+        }
+        response = requests.post(api_url, json=payload, headers=headers)
 
-        if data.get('status') and data.get('result'):
-            result = data['result'][0]
-            video_url = result.get('url')
-
-            return {
-                'success': True,
-                'video_url': video_url,
-            }
+        if response.status_code == 200:
+            data = response.json()
+            if 'result' in data and data['result']:
+                video_url = data['result'][0].get('_url')
+                if video_url:
+                    return {'success': True, 'video_url': video_url}
+            return {'success': False, 'error_message': 'Failed to retrieve Instagram video information'}
         else:
             return {'success': False, 'error_message': 'Failed to retrieve Instagram video information'}
 
     except requests.exceptions.RequestException as e:
         return {'success': False, 'error_message': str(e)}
 
-# Facebook functions
+
+def get_tiktok_video(url):
+    try:
+        api_url = "https://all-media-downloader1.p.rapidapi.com/tiktok"
+        payload = {"url": url}
+        headers = {
+            "content-type": "application/json",
+            "X-RapidAPI-Key": RapidAPI_Key,
+            "X-RapidAPI-Host": RapidAPI_Host
+        }
+        response = requests.post(api_url, json=payload, headers=headers)
+
+        if response.status_code == 200:
+            data = response.json()
+            if 'result' in data and 'data' in data['result']:
+                video_url = data['result']['data'].get('play')
+                if video_url:
+                    return {'success': True, 'video_url': video_url}
+            return {'success': False, 'error_message': 'Failed to retrieve TikTok video information'}
+        else:
+            return {'success': False, 'error_message': 'Failed to retrieve TikTok video information'}
+
+    except requests.exceptions.RequestException as e:
+        return {'success': False, 'error_message': str(e)}
+
+
+def get_threads_video(url):
+    try:
+        api_url = "https://all-media-downloader1.p.rapidapi.com/threads"
+        payload = {"url": url}
+        headers = {
+            "content-type": "application/json",
+            "X-RapidAPI-Key": RapidAPI_Key,
+            "X-RapidAPI-Host": RapidAPI_Host
+        }
+        response = requests.post(api_url, json=payload, headers=headers)
+
+        if response.status_code == 200:
+            data = response.json()
+            if 'result' in data and 'video_urls' in data['result'] and data['result']['video_urls']:
+                video_url = data['result']['video_urls'][0].get('download_url')
+                if video_url:
+                    return {'success': True, 'video_url': video_url}
+            return {'success': False, 'error_message': 'Failed to retrieve video URL from Threads'}
+        else:
+            return {'success': False, 'error_message': 'Failed to retrieve video URL from Threads'}
+
+    except requests.exceptions.RequestException as e:
+        return {'success': False, 'error_message': str(e)}
+
+def get_douyin_video(url):
+    try:
+        api_url = "https://all-media-downloader1.p.rapidapi.com/douyin"
+        payload = {"url": url}
+        headers = {
+            "content-type": "application/json",
+            "X-RapidAPI-Key": RapidAPI_Key,
+            "X-RapidAPI-Host": RapidAPI_Host
+        }
+        response = requests.post(api_url, json=payload, headers=headers)
+
+        if response.status_code == 200:
+            data = response.json()
+            if 'douyinResults' in data and 'result' in data['douyinResults'] and 'data' in data['douyinResults']['result']:
+                video_url = data['douyinResults']['result']['data'].get('play')
+                if video_url:
+                    return {'success': True, 'video_url': video_url}
+            return {'success': False, 'error_message': 'Failed to retrieve Douyin video information'}
+        else:
+            return {'success': False, 'error_message': 'Failed to retrieve Douyin video information'}
+
+    except requests.exceptions.RequestException as e:
+        return {'success': False, 'error_message': str(e)}
+
+
+def get_facebook_video(url):
+    try:
+        api_url = "https://facebook-reel-and-video-downloader.p.rapidapi.com/app/main.php"
+        querystring = {"url": url}
+        headers = {
+            "X-RapidAPI-Key": "71170096d0mshaeba07d8177372ep1813bbjsnde293edbcc48",
+	        "X-RapidAPI-Host": "facebook-reel-and-video-downloader.p.rapidapi.com"
+        }
+        response = requests.get(api_url, headers=headers, params=querystring)
+
+        if response.status_code == 200:
+            data = response.json()
+            if data['success'] and 'links' in data and 'Download High Quality' in data['links']:
+                video_url = data['links']['Download High Quality']
+            elif 'links' in data and 'Download Low Quality' in data['links']:
+                video_url = data['links']['Download Low Quality']
+            else:
+                return {'success': False, 'error_message': 'No download links available'}
+
+            return {'success': True, 'video_url': video_url}
+        else:
+            return {'success': False, 'error_message': 'Failed to retrieve Facebook video information'}
+
+    except requests.exceptions.RequestException as e:
+        return {'success': False, 'error_message': str(e)}
+
+
+def get_ytdlp_video(url):
+    ydl_opts = {
+        'format': 'best',
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info_dict = ydl.extract_info(url, download=False)
+            video_url = info_dict.get('url')
+           
+            return {'success': True,'video_url': video_url, }
+
+        except yt_dlp.utils.DownloadError as e:
+            return {'success': False, 'error_message': str(e)}
+        
+
+def clean_str(s):
+    return json.loads('{"text": "' + s + '"}')['text']
 
 def get_hd_link(content):
     regex_rate_limit = r'browser_native_hd_url":"([^"]+)"'
     match = re.search(regex_rate_limit, content)
     return clean_str(match.group(1)) if match else None
 
-def fetch_facebook_video_info(url):
+def get_facebook_com_video(url):
     headers = {
         'sec-fetch-user': '?1',
         'sec-ch-ua-mobile': '?0',
@@ -79,50 +189,8 @@ def fetch_facebook_video_info(url):
 
     except requests.exceptions.RequestException as e:
         return {'success': False, 'message': str(e)}
+    
 
-# New method for fb.watch or startTimeMs URLs
-
-def fetch_facebook_video_info_fb_watch(url):
-    # Decode the video URL (it will be URL-encoded in the route)
-    decoded_video_url = urllib.parse.unquote(url)
-
-    # Make a request to the API
-    api_url = "https://facebook-reel-and-video-downloader.p.rapidapi.com/app/main.php"
-    headers = {
-        "X-RapidAPI-Key": "71170096d0mshaeba07d8177372ep1813bbjsnde293edbcc48",
-        "X-RapidAPI-Host": "facebook-reel-and-video-downloader.p.rapidapi.com"
-    }
-    querystring = {"url": decoded_video_url}
-    response = requests.get(api_url, headers=headers, params=querystring)
-    data = response.json()
-
-    # Check for success
-    if data.get("success", False):
-        download_link = data["links"].get("Download High Quality", data["links"]["Download Low Quality"])
-        result = {"success": True, "video_url": download_link}
-    else:
-        result = {"success": False, "message": "Error: " + str(data.get("error_message", "Unknown error"))}
-
-    return result
-
-# YouTube functions
-
-def get_video_info(url):
-    ydl_opts = {
-        'format': 'best',
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        try:
-            info_dict = ydl.extract_info(url, download=False)
-            video_url = info_dict.get('url')
-           
-            return {'success': True,'video_url': video_url, }
-
-        except yt_dlp.utils.DownloadError as e:
-            return {'success': False, 'error_message': str(e)}
-
-# Flask routes
 
 @app.route('/<path:video_url>', methods=['GET'])
 def get_video_info_endpoint(video_url):
@@ -132,13 +200,19 @@ def get_video_info_endpoint(video_url):
         return ''
 
     if 'facebook.com' in video_url:
-        result = fetch_facebook_video_info(video_url)
+        result = get_facebook_com_video(video_url)
     elif 'fb.watch' in video_url or 'startTimeMs' in video_url:
-            result = fetch_facebook_video_info_fb_watch(video_url)
+        result = get_facebook_video(video_url)
     elif 'instagram.com' in video_url:
-        result = fetch_instagram_video_info(video_url)
+        result = get_instagram_video(video_url)
+    elif 'tiktok.com' in video_url:
+        result = get_tiktok_video(video_url)
+    elif 'threads' in video_url:
+        result = get_threads_video(video_url)
+    elif 'douyin' in video_url:
+        result = get_douyin_video(video_url)
     else:
-        result = get_video_info(video_url)
+        result = get_ytdlp_video(video_url)
 
     if(result.__contains__('error_message')):
         response_data = {
